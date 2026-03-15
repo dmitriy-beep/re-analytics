@@ -1,0 +1,29 @@
+# Database
+re_analytics.db
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.eggs/
+*.egg-info/
+
+# Environment
+.env
+*.env
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Raw data (large CSVs you can re-download)
+data/raw/
+
+# Generated outputs
+output/
+*.pdf
+
+# IDE
+.vscode/
+.idea/
+

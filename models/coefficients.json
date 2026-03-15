@@ -1,0 +1,141 @@
+{
+  "trained_at": "2026-03-14T14:42:12.819400",
+  "n_train": 3308,
+  "features": [
+    "sqft",
+    "lot_sqft_log",
+    "beds",
+    "baths",
+    "age",
+    "hoa",
+    "zip_95661",
+    "zip_95677",
+    "zip_95678",
+    "zip_95746",
+    "zip_95765"
+  ],
+  "overall_metrics": {
+    "r2": 0.8295,
+    "rmse": 190620.43,
+    "mae": 126571.23,
+    "mape": 12.47
+  },
+  "coefficients": {
+    "const": {
+      "coef": -1153796.8446,
+      "ci_lower": -1277889.5474,
+      "ci_upper": -1029704.1418,
+      "pvalue": 0.0
+    },
+    "sqft": {
+      "coef": 259.659,
+      "ci_lower": 244.2224,
+      "ci_upper": 275.0956,
+      "pvalue": 0.0
+    },
+    "lot_sqft_log": {
+      "coef": 170125.2014,
+      "ci_lower": 157707.8016,
+      "ci_upper": 182542.6011,
+      "pvalue": 0.0
+    },
+    "beds": {
+      "coef": -61728.4644,
+      "ci_lower": -73852.1402,
+      "ci_upper": -49604.7885,
+      "pvalue": 0.0
+    },
+    "baths": {
+      "coef": 71441.0264,
+      "ci_lower": 54707.3138,
+      "ci_upper": 88174.7389,
+      "pvalue": 0.0
+    },
+    "age": {
+      "coef": -1910.4211,
+      "ci_lower": -2364.3251,
+      "ci_upper": -1456.5171,
+      "pvalue": 0.0
+    },
+    "hoa": {
+      "coef": 543.984,
+      "ci_lower": 457.6002,
+      "ci_upper": 630.3678,
+      "pvalue": 0.0
+    },
+    "zip_95661": {
+      "coef": -99560.8468,
+      "ci_lower": -132631.9256,
+      "ci_upper": -66489.768,
+      "pvalue": 0.0
+    },
+    "zip_95677": {
+      "coef": -110334.987,
+      "ci_lower": -142829.5695,
+      "ci_upper": -77840.4045,
+      "pvalue": 0.0
+    },
+    "zip_95678": {
+      "coef": -87797.6044,
+      "ci_lower": -121729.631,
+      "ci_upper": -53865.5777,
+      "pvalue": 0.0
+    },
+    "zip_95746": {
+      "coef": -331.1479,
+      "ci_lower": -31279.537,
+      "ci_upper": 30617.2411,
+      "pvalue": 0.983263
+    },
+    "zip_95765": {
+      "coef": -177979.7774,
+      "ci_lower": -210673.9917,
+      "ci_upper": -145285.5631,
+      "pvalue": 0.0
+    }
+  },
+  "zip_metrics": [
+    {
+      "zip": "95650",
+      "n_test": 69,
+      "mape": 14.56,
+      "rmse": 302591.78,
+      "confidence_tier": "low"
+    },
+    {
+      "zip": "95661",
+      "n_test": 138,
+      "mape": 10.82,
+      "rmse": 126281.42,
+      "confidence_tier": "low"
+    },
+    {
+      "zip": "95677",
+      "n_test": 144,
+      "mape": 11.41,
+      "rmse": 169287.18,
+      "confidence_tier": "low"
+    },
+    {
+      "zip": "95678",
+      "n_test": 144,
+      "mape": 16.86,
+      "rmse": 135774.22,
+      "confidence_tier": "low"
+    },
+    {
+      "zip": "95746",
+      "n_test": 127,
+      "mape": 11.36,
+      "rmse": 291518.94,
+      "confidence_tier": "low"
+    },
+    {
+      "zip": "95765",
+      "n_test": 201,
+      "mape": 12.44,
+      "rmse": 137713.41,
+      "confidence_tier": "low"
+    }
+  ]
+}

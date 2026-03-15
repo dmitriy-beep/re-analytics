@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family={{ config.onepager.heading_font | replace(' ', '+') }}:wght@400;600;700&family={{ config.onepager.body_font | replace(' ', '+') }}:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+    --primary: {{ config.onepager.primary_color }};
+    --accent: {{ config.onepager.accent_color }};
+    --bg: {{ config.onepager.background_color }};
+    --text: {{ config.onepager.text_color }};
+    --heading-font: '{{ config.onepager.heading_font }}', Georgia, serif;
+    --body-font: '{{ config.onepager.body_font }}', sans-serif;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    font-family: var(--body-font);
+    background: var(--bg);
+    color: var(--text);
+    padding: 40px;
+    line-height: 1.5;
+    max-width: 680px;
+    margin: 0 auto;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 32px;
+    padding-bottom: 20px;
+    border-bottom: 3px solid var(--primary);
+}
+
+.header-left h1 {
+    font-family: var(--heading-font);
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--primary);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.header-left .tagline {
+    font-size: 11px;
+    color: var(--accent);
+    margin-top: 2px;
+}
+
+.agent-info {
+    text-align: right;
+    font-size: 11px;
+    line-height: 1.6;
+    color: #666;
+}
+
+.agent-name {
+    font-weight: 600;
+    color: var(--primary);
+    font-size: 12px;
+}
+
+.address-block {
+    margin-bottom: 28px;
+}
+
+.address-block h2 {
+    font-family: var(--heading-font);
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--primary);
+    line-height: 1.2;
+}
+
+.address-sub {
+    font-size: 13px;
+    color: #888;
+    margin-top: 4px;
+}
+
+.estimate-block {
+    background: var(--primary);
+    color: white;
+    border-radius: 8px;
+    padding: 24px 28px;
+    margin-bottom: 24px;
+}
+
+.estimate-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    opacity: 0.7;
+    margin-bottom: 4px;
+}
+
+.estimate-price {
+    font-family: var(--heading-font);
+    font-size: 38px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+}
+
+{% if config.onepager.show_confidence_interval %}
+.estimate-range {
+    font-size: 13px;
+    opacity: 0.7;
+    margin-top: 4px;
+}
+{% endif %}
+
+.tier-badge {
+    display: inline-block;
+    margin-top: 8px;
+    padding: 3px 10px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    background: rgba(255,255,255,0.15);
+}
+
+.features-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.feat-item {
+    text-align: center;
+    padding: 12px;
+    background: white;
+    border-radius: 6px;
+    border: 1px solid #e8e8e8;
+}
+
+.feat-value {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.feat-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #999;
+    margin-top: 2px;
+}
+
+{% if config.onepager.show_neighborhood_stats %}
+.nbhd-section {
+    margin-bottom: 24px;
+}
+
+.nbhd-title {
+    font-family: var(--heading-font);
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--primary);
+    margin-bottom: 12px;
+}
+
+.nbhd-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+}
+
+.nbhd-stat {
+    background: white;
+    border: 1px solid #e8e8e8;
+    border-radius: 6px;
+    padding: 12px;
+    text-align: center;
+}
+
+.nbhd-val {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--accent);
+}
+
+.nbhd-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #999;
+    margin-top: 2px;
+}
+{% endif %}
+
+.cta-block {
+    background: linear-gradient(135deg, var(--accent), {{ config.onepager.accent_color }}dd);
+    color: white;
+    border-radius: 8px;
+    padding: 20px 24px;
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.cta-text {
+    font-family: var(--heading-font);
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.cta-sub {
+    font-size: 12px;
+    opacity: 0.85;
+    margin-top: 4px;
+}
+
+.footer {
+    text-align: center;
+    font-size: 10px;
+    color: #aaa;
+    padding-top: 16px;
+    border-top: 1px solid #e8e8e8;
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+    <div class="header-left">
+        <h1>{{ config.agent.name or 'Agent Name' }}</h1>
+        <div class="tagline">{{ config.agent.tagline }}</div>
+    </div>
+    <div class="agent-info">
+        <div class="agent-name">{{ config.agent.name }}</div>
+        {{ config.agent.phone }}<br>
+        {{ config.agent.email }}
+        {% if config.agent.license_number %}<br>DRE# {{ config.agent.license_number }}{% endif %}
+        {% if config.agent.brokerage %}<br>{{ config.agent.brokerage }}{% endif %}
+    </div>
+</div>
+
+<div class="address-block">
+    <h2>{{ address }}</h2>
+    <div class="address-sub">{{ city }}, CA {{ features.zip }}</div>
+</div>
+
+<div class="estimate-block">
+    <div class="estimate-label">Estimated Market Value</div>
+    <div class="estimate-price">${{ "{:,.0f}".format(prediction.estimate) }}</div>
+    {% if config.onepager.show_confidence_interval %}
+    <div class="estimate-range">{{ prediction.interval_pct }}% range: ${{ "{:,.0f}".format(prediction.interval_low) }} — ${{ "{:,.0f}".format(prediction.interval_high) }}</div>
+    {% endif %}
+    <div class="tier-badge">{{ prediction.tier_label }} · MAPE {{ prediction.mape }}%</div>
+</div>
+
+<div class="features-grid">
+    <div class="feat-item">
+        <div class="feat-value">{{ "{:,}".format(features.sqft) }}</div>
+        <div class="feat-label">Sqft</div>
+    </div>
+    <div class="feat-item">
+        <div class="feat-value">{{ features.beds }}</div>
+        <div class="feat-label">Beds</div>
+    </div>
+    <div class="feat-item">
+        <div class="feat-value">{{ features.baths }}</div>
+        <div class="feat-label">Baths</div>
+    </div>
+    <div class="feat-item">
+        <div class="feat-value">{{ features.year_built }}</div>
+        <div class="feat-label">Year Built</div>
+    </div>
+</div>
+
+{% if config.onepager.show_neighborhood_stats and zip_stats %}
+<div class="nbhd-section">
+    <div class="nbhd-title">Neighborhood Snapshot — {{ features.zip }}</div>
+    <div class="nbhd-grid">
+        <div class="nbhd-stat">
+            <div class="nbhd-val">${{ "{:,.0f}".format(zip_stats.median_price) }}</div>
+            <div class="nbhd-label">Avg Sale Price</div>
+        </div>
+        <div class="nbhd-stat">
+            <div class="nbhd-val">{{ zip_stats.n }}</div>
+            <div class="nbhd-label">Sales (3yr)</div>
+        </div>
+        <div class="nbhd-stat">
+            <div class="nbhd-val">{{ zip_stats.avg_dom }}</div>
+            <div class="nbhd-label">Avg Days on Market</div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="cta-block">
+    <div class="cta-text">{{ config.onepager.cta_text }}</div>
+    <div class="cta-sub">{{ config.agent.phone }} · {{ config.agent.email }}</div>
+</div>
+
+<div class="footer">{{ config.onepager.footer_text }}</div>
+
+</body>
+</html>
