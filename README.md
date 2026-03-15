@@ -15,7 +15,7 @@ python setup_demo.py
 python app.py
 
 # 4. Open in browser
-open http://localhost:5000
+open http://localhost:5050
 ```
 
 ## Integration with Your Existing Pipeline
