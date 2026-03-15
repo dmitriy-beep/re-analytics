@@ -1,1 +1,7 @@
 flask>=3.0
+pandas
+statsmodels
+weasyprint
+qrcode
+pillow
+jinja2
