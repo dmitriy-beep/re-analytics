@@ -1,5 +1,5 @@
 {
-  "trained_at": "2026-03-15T14:54:25.068785",
+  "trained_at": "2026-03-15T19:33:58.316044",
   "n_train": 3308,
   "features": [
     "sqft",
@@ -8,6 +8,7 @@
     "baths",
     "age",
     "hoa",
+    "mortgage_rate",
     "zip_95661",
     "zip_95677",
     "zip_95678",
@@ -15,82 +16,88 @@
     "zip_95765"
   ],
   "overall_metrics": {
-    "r2": 0.8295,
-    "rmse": 190620.43,
-    "mae": 126571.23,
-    "mape": 12.47
+    "r2": 0.8296,
+    "rmse": 190564.44,
+    "mae": 126741.39,
+    "mape": 12.45
   },
   "coefficients": {
     "const": {
-      "coef": -1153796.8446,
-      "ci_lower": -1277889.5474,
-      "ci_upper": -1029704.1418,
+      "coef": -1032730.8808,
+      "ci_lower": -1207612.1853,
+      "ci_upper": -857849.5762,
       "pvalue": 0.0
     },
     "sqft": {
-      "coef": 259.659,
-      "ci_lower": 244.2224,
-      "ci_upper": 275.0956,
+      "coef": 259.1609,
+      "ci_lower": 243.7223,
+      "ci_upper": 274.5995,
       "pvalue": 0.0
     },
     "lot_sqft_log": {
-      "coef": 170125.2014,
-      "ci_lower": 157707.8016,
-      "ci_upper": 182542.6011,
+      "coef": 170732.228,
+      "ci_lower": 158304.5432,
+      "ci_upper": 183159.9127,
       "pvalue": 0.0
     },
     "beds": {
-      "coef": -61728.4644,
-      "ci_lower": -73852.1402,
-      "ci_upper": -49604.7885,
+      "coef": -61614.7814,
+      "ci_lower": -73734.0348,
+      "ci_upper": -49495.528,
       "pvalue": 0.0
     },
     "baths": {
-      "coef": 71441.0264,
-      "ci_lower": 54707.3138,
-      "ci_upper": 88174.7389,
+      "coef": 71666.2408,
+      "ci_lower": 54937.8235,
+      "ci_upper": 88394.6581,
       "pvalue": 0.0
     },
     "age": {
-      "coef": -1910.4211,
-      "ci_lower": -2364.3251,
-      "ci_upper": -1456.5171,
+      "coef": -1925.131,
+      "ci_lower": -2379.0959,
+      "ci_upper": -1471.1662,
       "pvalue": 0.0
     },
     "hoa": {
-      "coef": 543.984,
-      "ci_lower": 457.6002,
-      "ci_upper": 630.3678,
+      "coef": 542.5452,
+      "ci_lower": 456.1844,
+      "ci_upper": 628.906,
       "pvalue": 0.0
     },
+    "mortgage_rate": {
+      "coef": -18911.871,
+      "ci_lower": -38169.0607,
+      "ci_upper": 345.3188,
+      "pvalue": 0.05425
+    },
     "zip_95661": {
-      "coef": -99560.8468,
-      "ci_lower": -132631.9256,
-      "ci_upper": -66489.768,
+      "coef": -98619.9093,
+      "ci_lower": -131691.2981,
+      "ci_upper": -65548.5204,
       "pvalue": 0.0
     },
     "zip_95677": {
-      "coef": -110334.987,
-      "ci_lower": -142829.5695,
-      "ci_upper": -77840.4045,
+      "coef": -109909.0268,
+      "ci_lower": -142393.1698,
+      "ci_upper": -77424.8837,
       "pvalue": 0.0
     },
     "zip_95678": {
-      "coef": -87797.6044,
-      "ci_lower": -121729.631,
-      "ci_upper": -53865.5777,
-      "pvalue": 0.0
+      "coef": -86557.5253,
+      "ci_lower": -120499.1233,
+      "ci_upper": -52615.9273,
+      "pvalue": 1e-06
     },
     "zip_95746": {
-      "coef": -331.1479,
-      "ci_lower": -31279.537,
-      "ci_upper": 30617.2411,
-      "pvalue": 0.983263
+      "coef": -23.7113,
+      "ci_lower": -30960.9835,
+      "ci_upper": 30913.561,
+      "pvalue": 0.998801
     },
     "zip_95765": {
-      "coef": -177979.7774,
-      "ci_lower": -210673.9917,
-      "ci_upper": -145285.5631,
+      "coef": -177276.4061,
+      "ci_lower": -209965.0504,
+      "ci_upper": -144587.7618,
       "pvalue": 0.0
     }
   },
@@ -98,43 +105,43 @@
     {
       "zip": "95650",
       "n_test": 69,
-      "mape": 14.56,
-      "rmse": 302591.78,
+      "mape": 13.93,
+      "rmse": 302157.57,
       "confidence_tier": "low"
     },
     {
       "zip": "95661",
       "n_test": 138,
-      "mape": 10.82,
-      "rmse": 126281.42,
+      "mape": 10.37,
+      "rmse": 126113.04,
       "confidence_tier": "low"
     },
     {
       "zip": "95677",
       "n_test": 144,
-      "mape": 11.41,
-      "rmse": 169287.18,
+      "mape": 11.79,
+      "rmse": 169460.35,
       "confidence_tier": "low"
     },
     {
       "zip": "95678",
       "n_test": 144,
-      "mape": 16.86,
-      "rmse": 135774.22,
+      "mape": 16.47,
+      "rmse": 135618.87,
       "confidence_tier": "low"
     },
     {
       "zip": "95746",
       "n_test": 127,
-      "mape": 11.36,
-      "rmse": 291518.94,
+      "mape": 11.26,
+      "rmse": 291491.46,
       "confidence_tier": "low"
     },
     {
       "zip": "95765",
       "n_test": 201,
-      "mape": 12.44,
-      "rmse": 137713.41,
+      "mape": 12.45,
+      "rmse": 137823.16,
       "confidence_tier": "low"
     }
   ]

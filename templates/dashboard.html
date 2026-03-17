@@ -625,6 +625,10 @@ td.mono {
                         <label>HOA / month</label>
                         <input type="number" id="est-hoa" value="0" min="0">
                     </div>
+                    <div class="form-group">
+                        <label>Mortgage Rate %</label>
+                        <input type="number" id="est-rate" value="" min="2" max="12" step="0.125" placeholder="auto">
+                    </div>
                     <div class="form-group" style="justify-content:flex-end">
                         <button class="btn btn-primary" onclick="runEstimate()">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
@@ -845,6 +849,10 @@ td.mono {
                     <div class="toggle-row">
                         <div><div class="toggle-label">zip_dummies</div><div class="toggle-desc">One-hot encoded ZIP codes</div></div>
                         <label class="toggle"><input type="checkbox" id="ft-zip" checked><span class="toggle-track"></span></label>
+                    </div>
+                    <div class="toggle-row">
+                        <div><div class="toggle-label">mortgage_rate</div><div class="toggle-desc">30-yr fixed rate at time of sale</div></div>
+                        <label class="toggle"><input type="checkbox" id="ft-rate" checked><span class="toggle-track"></span></label>
                     </div>
                 </div>
 
@@ -1075,6 +1083,7 @@ function toast(msg) {
 
 // ======================== ESTIMATOR ========================
 async function runEstimate() {
+    const rateVal = document.getElementById('est-rate').value;
     const body = {
         zip: document.getElementById('est-zip').value,
         sqft: document.getElementById('est-sqft').value,
@@ -1082,7 +1091,8 @@ async function runEstimate() {
         beds: document.getElementById('est-beds').value,
         baths: document.getElementById('est-baths').value,
         year_built: document.getElementById('est-year').value,
-        hoa: document.getElementById('est-hoa').value
+        hoa: document.getElementById('est-hoa').value,
+        mortgage_rate: rateVal ? parseFloat(rateVal) : null
     };
 
     const res = await fetch('/api/predict', {
@@ -1176,7 +1186,8 @@ async function saveModelConfig() {
         baths: document.getElementById('ft-baths').checked,
         age: document.getElementById('ft-age').checked,
         hoa: document.getElementById('ft-hoa').checked,
-        zip_dummies: document.getElementById('ft-zip').checked
+        zip_dummies: document.getElementById('ft-zip').checked,
+        mortgage_rate: document.getElementById('ft-rate').checked
     };
     cfg.model.confidence_tiers.high.max_mape = parseFloat(document.getElementById('tier-high').value);
     cfg.model.confidence_tiers.medium.max_mape = parseFloat(document.getElementById('tier-med').value);

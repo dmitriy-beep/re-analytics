@@ -69,7 +69,8 @@ DEFAULT_CONFIG = {
             "baths": True,
             "age": True,
             "hoa": True,
-            "zip_dummies": True
+            "zip_dummies": True,
+            "mortgage_rate": True
         },
         "min_zip_samples": 30,
         "test_split": 0.2,
@@ -137,6 +138,20 @@ def get_model_accuracy():
         return query_db("SELECT * FROM model_accuracy ORDER BY mape ASC")
     except Exception:
         return []
+
+
+def get_latest_mortgage_rate():
+    """Fetch the most recent mortgage rate from enriched transactions."""
+    try:
+        row = query_db(
+            "SELECT mortgage_rate FROM transactions "
+            "WHERE mortgage_rate IS NOT NULL "
+            "ORDER BY sale_date DESC LIMIT 1",
+            one=True
+        )
+        return float(row["mortgage_rate"]) if row else None
+    except Exception:
+        return None
 
 
 def _coef_val(coefs, key, default=0):
@@ -211,6 +226,16 @@ def compute_prediction(features, coefficients, config):
         contrib = hoa_coef * features.get("hoa", 0)
         estimate += contrib
         breakdown.append({"feature": "HOA/month", "value": f"${features.get('hoa', 0)}", "contribution": round(contrib, 2)})
+
+    # mortgage_rate
+    if config["model"]["features_enabled"].get("mortgage_rate", True) and "mortgage_rate" in coefs:
+        rate_coef = _coef_val(coefs, "mortgage_rate")
+        rate_val = features.get("mortgage_rate")
+        if rate_val is None:
+            rate_val = get_latest_mortgage_rate() or 6.5
+        contrib = rate_coef * rate_val
+        estimate += contrib
+        breakdown.append({"feature": "Mortgage Rate", "value": f"{rate_val}%", "contribution": round(contrib, 2)})
 
     # zip dummies
     if config["model"]["features_enabled"].get("zip_dummies", True):
@@ -311,7 +336,8 @@ def api_predict():
         "baths": float(data.get("baths", 2)),
         "year_built": int(data.get("year_built", 2000)),
         "hoa": int(data.get("hoa", 0)),
-        "zip": str(data.get("zip", "95677"))
+        "zip": str(data.get("zip", "95677")),
+        "mortgage_rate": float(data["mortgage_rate"]) if data.get("mortgage_rate") else None
     }
 
     result = compute_prediction(features, coefficients, config)
@@ -395,7 +421,8 @@ def api_onepager_preview():
         "baths": float(data.get("baths", 2)),
         "year_built": int(data.get("year_built", 2000)),
         "hoa": int(data.get("hoa", 0)),
-        "zip": str(data.get("zip", "95677"))
+        "zip": str(data.get("zip", "95677")),
+        "mortgage_rate": float(data["mortgage_rate"]) if data.get("mortgage_rate") else None
     }
     address = data.get("address", "123 Sample Street")
     city = data.get("city", "Rocklin")

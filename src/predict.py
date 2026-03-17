@@ -41,6 +41,7 @@ class PropertyFeatures:
     hoa: int
     zip_code: str
     sale_year: int = 2025   # year to price as-of
+    mortgage_rate: Optional[float] = None  # 30-yr fixed; None = auto-fetch latest from DB
 
 
 @dataclass
@@ -75,15 +76,34 @@ def load_zip_accuracy(conn: sqlite3.Connection) -> pd.DataFrame:
     return pd.read_sql("SELECT * FROM model_accuracy", conn)
 
 
+def get_latest_mortgage_rate(conn: sqlite3.Connection) -> Optional[float]:
+    """
+    Fetch the most recent mortgage rate from the transactions table.
+    Returns the rate from the latest sale that has enrichment data,
+    or None if enrichment hasn't been run.
+    """
+    try:
+        row = conn.execute("""
+            SELECT mortgage_rate FROM transactions
+            WHERE mortgage_rate IS NOT NULL
+            ORDER BY sale_date DESC LIMIT 1
+        """).fetchone()
+        return float(row["mortgage_rate"]) if row else None
+    except Exception:
+        return None
+
+
 # ── Feature construction ──────────────────────────────────────────────────────
 
 def build_feature_vector(
     prop: PropertyFeatures,
     coef_data: dict,
+    conn: Optional[sqlite3.Connection] = None,
 ) -> dict:
     """
     Build a feature dict matching the model's training features.
     ZIP dummies are constructed from the feature names in coefficients.json.
+    Mortgage rate is included only if the model was trained with it.
     """
     age = prop.sale_year - prop.year_built
     median_lot = 7200   # fallback if lot_sqft missing — roughly median for area
@@ -99,6 +119,16 @@ def build_feature_vector(
         "age": float(age),
         "hoa": float(prop.hoa),
     }
+
+    # Mortgage rate — only if the model was trained with it
+    if "mortgage_rate" in coef_data.get("coefficients", {}):
+        if prop.mortgage_rate is not None:
+            features["mortgage_rate"] = float(prop.mortgage_rate)
+        elif conn is not None:
+            latest = get_latest_mortgage_rate(conn)
+            features["mortgage_rate"] = float(latest) if latest else 6.5  # sensible fallback
+        else:
+            features["mortgage_rate"] = 6.5  # fallback if no DB connection
 
     # Add ZIP dummies — set all to 0, then flip the matching one to 1
     zip_feature_names = [k for k in coef_data["coefficients"] if k.startswith("zip_")]
@@ -133,7 +163,7 @@ def predict(
     zip_accuracy = load_zip_accuracy(conn)
 
     # Build feature vector
-    features = build_feature_vector(prop, coef_data)
+    features = build_feature_vector(prop, coef_data, conn=conn)
 
     # Compute point estimate
     point = sum(

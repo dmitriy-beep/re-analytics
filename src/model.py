@@ -2,10 +2,14 @@
 model.py — Hedonic pricing model training and evaluation.
 
 Usage:
-    python src/model.py
+    python src/model.py                # train with all available features
+    python src/model.py --compare      # train baseline then enriched, show MAPE deltas
 
 Trains an OLS regression on the transactions table, evaluates accuracy
 per ZIP, assigns confidence tiers, and saves coefficients to models/.
+
+Backward compatible: if enrichment columns are missing or NULL, the model
+trains on the original feature set only.
 """
 
 
@@ -42,15 +46,37 @@ TIER_MEDIUM_MAPE  = 10.0
 TIER_HIGH_N       = 50
 TIER_MEDIUM_N     = 30
 
+# Enrichment feature columns — only used if present and sufficiently populated
+# Note: weeks_of_supply, median_days_on_market, sale_to_list_ratio,
+# pct_listings_price_drop, off_market_in_two_weeks were tested but are
+# county-level signals that added noise without improving MAPE. Removed 2026-03-15.
+ENRICHMENT_COLUMNS = [
+    "mortgage_rate",
+]
+
+# Minimum fill rate to include an enrichment column in the model
+MIN_ENRICHMENT_FILL_RATE = 0.50
+
 
 # ── Data loading ─────────────────────────────────────────────────────────────
 
 def load_transactions(conn: sqlite3.Connection) -> pd.DataFrame:
-    """Load all transactions from the database."""
-    query = """
+    """Load all transactions from the database, including enrichment columns if present."""
+    # Check which enrichment columns exist in the table
+    cursor = conn.cursor()
+    existing_cols = {row[1] for row in cursor.execute("PRAGMA table_info(transactions)").fetchall()}
+
+    base_cols = "sale_price, sqft, lot_sqft, beds, baths, year_built, hoa, zip, sale_date, address"
+
+    enrich_cols = [c for c in ENRICHMENT_COLUMNS if c in existing_cols]
+    if enrich_cols:
+        enrich_select = ", " + ", ".join(enrich_cols)
+    else:
+        enrich_select = ""
+
+    query = f"""
         SELECT
-            sale_price, sqft, lot_sqft, beds, baths,
-            year_built, hoa, zip, sale_date, address
+            {base_cols}{enrich_select}
         FROM transactions
         WHERE sale_price IS NOT NULL
           AND sqft IS NOT NULL
@@ -58,23 +84,28 @@ def load_transactions(conn: sqlite3.Connection) -> pd.DataFrame:
     """
     df = pd.read_sql(query, conn)
     print(f"Loaded {len(df):,} transactions from database")
+
+    if enrich_cols:
+        for col in enrich_cols:
+            filled = df[col].notna().sum()
+            pct = filled / len(df) * 100
+            print(f"  {col}: {filled:,} populated ({pct:.0f}%)")
+
     return df
 
 
 # ── Feature engineering ───────────────────────────────────────────────────────
 
-def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
+def engineer_features(df: pd.DataFrame, use_enrichment: bool = True) -> tuple:
     """
     Build model features from raw transaction columns.
 
-    Features:
-        sqft            — living area (continuous)
-        lot_sqft_log    — log of lot size (log-transforms right skew)
-        beds            — bedroom count
-        baths           — bathroom count (includes 0.5 increments)
-        age             — years since built at time of sale
-        hoa             — monthly HOA (0 if none)
-        zip_XXXXX       — one-hot encoded ZIP dummies (drop_first=True)
+    Base features:
+        sqft, lot_sqft_log, beds, baths, age, hoa, zip_XXXXX dummies
+
+    Enrichment features (if available and use_enrichment=True):
+        mortgage_rate, weeks_of_supply, median_days_on_market,
+        sale_to_list_ratio, pct_listings_price_drop, off_market_in_two_weeks
     """
     df = df.copy()
 
@@ -109,6 +140,28 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
     zip_dummies = pd.get_dummies(df["zip"], prefix="zip", drop_first=True).astype(int)
 
     feature_cols = ["sqft", "lot_sqft_log", "beds", "baths", "age", "hoa"]
+
+    # ── Enrichment features ──────────────────────────────────────────────
+    enrich_used = []
+    if use_enrichment:
+        for col in ENRICHMENT_COLUMNS:
+            if col in df.columns:
+                fill_rate = df[col].notna().sum() / len(df)
+                if fill_rate >= MIN_ENRICHMENT_FILL_RATE:
+                    # Fill NaNs with column median for rows that are missing
+                    median_val = df[col].median()
+                    df[col] = df[col].fillna(median_val)
+                    feature_cols.append(col)
+                    enrich_used.append(col)
+                else:
+                    print(f"  Skipping {col}: only {fill_rate:.0%} populated (need {MIN_ENRICHMENT_FILL_RATE:.0%})")
+
+    if enrich_used:
+        print(f"  Enrichment features included: {enrich_used}")
+    else:
+        if use_enrichment:
+            print(f"  No enrichment features available — using base features only")
+
     df_features = pd.concat([df[feature_cols], zip_dummies], axis=1)
 
     # Drop any remaining NaNs in features
@@ -298,27 +351,27 @@ def save_accuracy_to_db(zip_metrics: pd.DataFrame, conn: sqlite3.Connection) -> 
     conn.commit()
 
 
-# ── Main ──────────────────────────────────────────────────────────────────────
+# ── Training pipeline ────────────────────────────────────────────────────────
 
-def train_model() -> None:
-    """Full training pipeline: load → features → train → evaluate → save."""
-    init_db()
-    conn = get_connection()
-
+def _run_pipeline(conn, use_enrichment: bool, label: str) -> tuple:
+    """
+    Shared training pipeline. Returns (metrics, zip_metrics, model, features, df, split_data).
+    """
     # Load
     df = load_transactions(conn)
 
     # Features
-    print("\nEngineering features...")
-    df, features = engineer_features(df)
+    print(f"\nEngineering features ({label})...")
+    df, features = engineer_features(df, use_enrichment=use_enrichment)
     print(f"  Training set: {len(df):,} transactions across {df['zip'].nunique()} ZIPs")
+    print(f"  Features: {list(features.columns)}")
 
     # Split
     X_train, X_test, y_train, y_test, test_df = train_test_split_by_zip(df, features)
     print(f"  Train: {len(X_train):,}  |  Test: {len(X_test):,}")
 
     # Train
-    print("\nFitting OLS model...")
+    print(f"\nFitting OLS model ({label})...")
     model = train_ols(X_train, y_train)
 
     # Overall metrics
@@ -326,29 +379,50 @@ def train_model() -> None:
     y_pred = model.predict(X_test_const)
     metrics = compute_metrics(y_test, y_pred)
 
-    print(f"\n── Overall test-set metrics ────────────────")
+    # Per-ZIP metrics
+    zip_metrics = evaluate_by_zip(test_df, y_pred.values)
+
+    return metrics, zip_metrics, model, features, df, (X_train, X_test, y_train, y_test, test_df, y_pred)
+
+
+def _print_results(label: str, metrics: dict, zip_metrics: pd.DataFrame, model=None) -> None:
+    """Print formatted results for a model run."""
+    print(f"\n── {label}: Overall test-set metrics ──────────")
     print(f"  R²:    {metrics['r2']:.4f}")
     print(f"  RMSE:  ${metrics['rmse']:,.0f}")
     print(f"  MAE:   ${metrics['mae']:,.0f}")
     print(f"  MAPE:  {metrics['mape']:.1f}%")
 
-    # Per-ZIP metrics
-    zip_metrics = evaluate_by_zip(test_df, y_pred.values)
-    print(f"\n── Per-ZIP accuracy ────────────────────────")
+    print(f"\n── {label}: Per-ZIP accuracy ──────────────────")
     print(f"  {'ZIP':<8} {'N':>5} {'MAPE':>7} {'RMSE':>10} {'Tier'}")
     print(f"  {'─'*8} {'─'*5} {'─'*7} {'─'*10} {'─'*8}")
     for _, row in zip_metrics.iterrows():
         print(f"  {row['zip']:<8} {row['n_test']:>5} {row['mape']:>6.1f}% "
               f"  ${row['rmse']:>8,.0f}   {row['confidence_tier']}")
 
-    # Coefficient table
-    print(f"\n── Coefficients ────────────────────────────")
-    print(f"  {'Feature':<20} {'Coef':>12} {'p-value':>10}")
-    print(f"  {'─'*20} {'─'*12} {'─'*10}")
-    for name, coef in model.params.items():
-        pval = model.pvalues[name]
-        sig = "***" if pval < 0.001 else "**" if pval < 0.01 else "*" if pval < 0.05 else ""
-        print(f"  {name:<20} {coef:>12,.2f} {pval:>10.4f} {sig}")
+    if model is not None:
+        print(f"\n── {label}: Coefficients ──────────────────────")
+        print(f"  {'Feature':<30} {'Coef':>12} {'p-value':>10}")
+        print(f"  {'─'*30} {'─'*12} {'─'*10}")
+        for name, coef in model.params.items():
+            pval = model.pvalues[name]
+            sig = "***" if pval < 0.001 else "**" if pval < 0.01 else "*" if pval < 0.05 else ""
+            print(f"  {name:<30} {coef:>12,.2f} {pval:>10.4f} {sig}")
+
+
+# ── Main ──────────────────────────────────────────────────────────────────────
+
+def train_model() -> None:
+    """Full training pipeline: load → features → train → evaluate → save."""
+    init_db()
+    conn = get_connection()
+
+    metrics, zip_metrics, model, features, df, split = _run_pipeline(
+        conn, use_enrichment=True, label="Model"
+    )
+    X_train, X_test, y_train, y_test, test_df, y_pred = split
+
+    _print_results("Model", metrics, zip_metrics, model)
 
     # Save
     print("\nSaving outputs...")
@@ -362,5 +436,76 @@ def train_model() -> None:
     print(f"   Residual plot: {RESIDUAL_PLOT_PATH}")
 
 
+def compare_models() -> None:
+    """
+    Train baseline (no enrichment) and enriched models side by side.
+    Print per-ZIP MAPE deltas to show improvement.
+    """
+    init_db()
+    conn = get_connection()
+
+    # ── Baseline (original features only) ────────────────────────────────
+    print("=" * 60)
+    print("  BASELINE MODEL (original features only)")
+    print("=" * 60)
+    base_metrics, base_zips, base_model, _, _, _ = _run_pipeline(
+        conn, use_enrichment=False, label="Baseline"
+    )
+    _print_results("Baseline", base_metrics, base_zips)
+
+    # ── Enriched ─────────────────────────────────────────────────────────
+    print("\n" + "=" * 60)
+    print("  ENRICHED MODEL (with market data)")
+    print("=" * 60)
+    enr_metrics, enr_zips, enr_model, features, df, split = _run_pipeline(
+        conn, use_enrichment=True, label="Enriched"
+    )
+    X_train, X_test, y_train, y_test, test_df, y_pred = split
+    _print_results("Enriched", enr_metrics, enr_zips, enr_model)
+
+    # ── Comparison table ─────────────────────────────────────────────────
+    print("\n" + "=" * 60)
+    print("  BEFORE / AFTER COMPARISON")
+    print("=" * 60)
+
+    print(f"\n  Overall:")
+    print(f"    R²:   {base_metrics['r2']:.4f}  →  {enr_metrics['r2']:.4f}  "
+          f"({'+'if enr_metrics['r2'] > base_metrics['r2'] else ''}{enr_metrics['r2'] - base_metrics['r2']:.4f})")
+    print(f"    MAPE: {base_metrics['mape']:.1f}%  →  {enr_metrics['mape']:.1f}%  "
+          f"({enr_metrics['mape'] - base_metrics['mape']:+.1f}pp)")
+
+    print(f"\n  {'ZIP':<8} {'Before':>8} {'After':>8} {'Delta':>8} {'New Tier'}")
+    print(f"  {'─'*8} {'─'*8} {'─'*8} {'─'*8} {'─'*10}")
+
+    base_zip_map = {r["zip"]: r for _, r in base_zips.iterrows()}
+    for _, row in enr_zips.iterrows():
+        z = row["zip"]
+        before = base_zip_map.get(z, {}).get("mape", 0)
+        after = row["mape"]
+        delta = after - before
+        arrow = "↓" if delta < 0 else "↑" if delta > 0 else "→"
+        print(f"  {z:<8} {before:>7.1f}% {after:>7.1f}% {delta:>+7.1f}pp {arrow}  {row['confidence_tier']}")
+
+    # ── Save enriched model ──────────────────────────────────────────────
+    print("\nSaving enriched model...")
+    plot_residuals(y_test, y_pred.values, RESIDUAL_PLOT_PATH)
+    save_coefficients(enr_model, list(features.columns), enr_metrics, enr_zips, len(X_train))
+    save_accuracy_to_db(enr_zips, conn)
+    conn.close()
+
+    print(f"\n✅ Comparison complete — enriched model saved")
+    print(f"   Coefficients: {COEFFICIENTS_PATH}")
+    print(f"   Residual plot: {RESIDUAL_PLOT_PATH}")
+
+
 if __name__ == "__main__":
-    train_model()
+    import argparse
+    parser = argparse.ArgumentParser(description="Train hedonic pricing model")
+    parser.add_argument("--compare", action="store_true",
+                        help="Train baseline + enriched, print before/after MAPE")
+    args = parser.parse_args()
+
+    if args.compare:
+        compare_models()
+    else:
+        train_model()
