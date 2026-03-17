@@ -573,6 +573,10 @@ td.mono {
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3"/></svg>
             Data Explorer
         </div>
+        <div class="nav-item" data-panel="leads">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/></svg>
+            Lead Scoring
+        </div>
 
         <div class="sidebar-footer">
             <div class="db-status">
@@ -1057,6 +1061,302 @@ td.mono {
             </div>
         </div>
 
+        <!-- ========== LEAD SCORING PANEL ========== -->
+        <div class="panel" id="panel-leads">
+            <div class="panel-title">Lead Scoring</div>
+            <div class="panel-desc">Rule-based propensity scoring for all parcels. Signals: tenure, rate lock-in, equity gap, market temperature, property age.</div>
+
+            <!-- Sub-nav tabs -->
+            <div style="display:flex;gap:8px;margin-bottom:24px;border-bottom:1px solid var(--border);padding-bottom:0;">
+                <div class="leads-tab active" data-tab="overview" onclick="switchLeadsTab('overview')" style="padding:8px 16px;font-size:13px;font-weight:500;cursor:pointer;border-bottom:2px solid var(--accent);color:var(--accent);margin-bottom:-1px;">Overview</div>
+                <div class="leads-tab" data-tab="table" onclick="switchLeadsTab('table')" style="padding:8px 16px;font-size:13px;font-weight:500;cursor:pointer;border-bottom:2px solid transparent;color:var(--text-muted);margin-bottom:-1px;">Top Leads</div>
+                <div class="leads-tab" data-tab="tuning" onclick="switchLeadsTab('tuning')" style="padding:8px 16px;font-size:13px;font-weight:500;cursor:pointer;border-bottom:2px solid transparent;color:var(--text-muted);margin-bottom:-1px;">Score Tuning</div>
+                <div class="leads-tab" data-tab="logger" onclick="switchLeadsTab('logger')" style="padding:8px 16px;font-size:13px;font-weight:500;cursor:pointer;border-bottom:2px solid transparent;color:var(--text-muted);margin-bottom:-1px;">Log Interaction</div>
+            </div>
+
+            <!-- ── Overview sub-panel ── -->
+            <div id="leads-tab-overview">
+                <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;" id="leads-stat-cards">
+                    <div class="card" style="text-align:center;padding:20px 12px;">
+                        <div style="font-size:28px;font-weight:700;color:var(--green)" id="ls-tier-a">—</div>
+                        <div style="font-size:11px;color:var(--text-dim);margin-top:4px;text-transform:uppercase;letter-spacing:.06em">Tier A</div>
+                        <div style="font-size:11px;color:var(--green);margin-top:2px">High Propensity</div>
+                    </div>
+                    <div class="card" style="text-align:center;padding:20px 12px;">
+                        <div style="font-size:28px;font-weight:700;color:var(--blue)" id="ls-tier-b">—</div>
+                        <div style="font-size:11px;color:var(--text-dim);margin-top:4px;text-transform:uppercase;letter-spacing:.06em">Tier B</div>
+                        <div style="font-size:11px;color:var(--blue);margin-top:2px">Medium Propensity</div>
+                    </div>
+                    <div class="card" style="text-align:center;padding:20px 12px;">
+                        <div style="font-size:28px;font-weight:700;color:var(--accent)" id="ls-tier-c">—</div>
+                        <div style="font-size:11px;color:var(--text-dim);margin-top:4px;text-transform:uppercase;letter-spacing:.06em">Tier C</div>
+                        <div style="font-size:11px;color:var(--accent);margin-top:2px">Low Propensity</div>
+                    </div>
+                    <div class="card" style="text-align:center;padding:20px 12px;">
+                        <div style="font-size:28px;font-weight:700;color:var(--text-muted)" id="ls-tier-d">—</div>
+                        <div style="font-size:11px;color:var(--text-dim);margin-top:4px;text-transform:uppercase;letter-spacing:.06em">Tier D</div>
+                        <div style="font-size:11px;color:var(--text-dim);margin-top:2px">Not a Lead</div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title"><span class="dot" style="background:var(--accent)"></span> Score Distribution</div>
+                    <div style="margin-top:8px;color:var(--text-dim);font-size:12px;" id="ls-total-label">Loading...</div>
+                    <div id="ls-histogram" style="margin-top:16px;display:flex;align-items:flex-end;gap:4px;height:100px;">
+                        <div style="color:var(--text-dim);font-size:12px;">No data yet — run score_leads.py first</div>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:10px;color:var(--text-dim);padding:0 2px;">
+                        <span>0</span><span>10</span><span>20</span><span>30</span><span>40</span><span>50</span><span>60</span><span>70</span><span>80</span><span>90</span><span>100</span>
+                    </div>
+                    <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);display:flex;gap:24px;font-size:12px;color:var(--text-muted);">
+                        <span>Total: <strong id="ls-total" style="color:var(--text)">—</strong></span>
+                        <span>Mean score: <strong id="ls-mean" style="color:var(--text)">—</strong></span>
+                    </div>
+                </div>
+
+                <div class="card" style="margin-top:16px;">
+                    <div class="card-title"><span class="dot" style="background:var(--blue)"></span> Scoring Signals</div>
+                    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-top:12px;">
+                        <div style="text-align:center;padding:12px 8px;background:var(--bg);border-radius:var(--radius);border:1px solid var(--border);">
+                            <div style="font-size:18px;font-weight:700;color:var(--accent)">25%</div>
+                            <div style="font-size:11px;color:var(--text-dim);margin-top:4px">Tenure</div>
+                        </div>
+                        <div style="text-align:center;padding:12px 8px;background:var(--bg);border-radius:var(--radius);border:1px solid var(--border);">
+                            <div style="font-size:18px;font-weight:700;color:var(--accent)">20%</div>
+                            <div style="font-size:11px;color:var(--text-dim);margin-top:4px">Rate Lock</div>
+                        </div>
+                        <div style="text-align:center;padding:12px 8px;background:var(--bg);border-radius:var(--radius);border:1px solid var(--border);">
+                            <div style="font-size:18px;font-weight:700;color:var(--accent)">25%</div>
+                            <div style="font-size:11px;color:var(--text-dim);margin-top:4px">Value Gap</div>
+                        </div>
+                        <div style="text-align:center;padding:12px 8px;background:var(--bg);border-radius:var(--radius);border:1px solid var(--border);">
+                            <div style="font-size:18px;font-weight:700;color:var(--accent)">15%</div>
+                            <div style="font-size:11px;color:var(--text-dim);margin-top:4px">Mkt Temp</div>
+                        </div>
+                        <div style="text-align:center;padding:12px 8px;background:var(--bg);border-radius:var(--radius);border:1px solid var(--border);">
+                            <div style="font-size:18px;font-weight:700;color:var(--accent)">15%</div>
+                            <div style="font-size:11px;color:var(--text-dim);margin-top:4px">Prop Age</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── Top Leads Table sub-panel ── -->
+            <div id="leads-tab-table" style="display:none;">
+                <!-- Filters -->
+                <div class="card" style="margin-bottom:16px;">
+                    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+                        <div class="form-group" style="margin:0;min-width:140px;">
+                            <label style="font-size:11px;">ZIP</label>
+                            <select id="leads-filter-zip" style="padding:6px 10px;font-size:13px;">
+                                <option value="">All ZIPs</option>
+                                <option value="95765">95765 — Roseville NW</option>
+                                <option value="95677">95677 — Rocklin</option>
+                                <option value="95678">95678 — Roseville</option>
+                                <option value="95661">95661 — Roseville W</option>
+                                <option value="95746">95746 — Granite Bay</option>
+                                <option value="95650">95650 — Loomis</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="margin:0;">
+                            <label style="font-size:11px;">Tier</label>
+                            <div style="display:flex;gap:6px;margin-top:2px;">
+                                <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;"><input type="checkbox" id="leads-tier-a" checked onchange="loadLeads()"> <span style="color:var(--green)">A</span></label>
+                                <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;"><input type="checkbox" id="leads-tier-b" checked onchange="loadLeads()"> <span style="color:var(--blue)">B</span></label>
+                                <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;"><input type="checkbox" id="leads-tier-c" onchange="loadLeads()"> <span style="color:var(--accent)">C</span></label>
+                                <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;"><input type="checkbox" id="leads-tier-d" onchange="loadLeads()"> <span style="color:var(--text-muted)">D</span></label>
+                            </div>
+                        </div>
+                        <div class="form-group" style="margin:0;min-width:160px;">
+                            <label style="font-size:11px;">Min Score: <span id="leads-minscore-label">50</span></label>
+                            <input type="range" id="leads-minscore" min="0" max="100" value="50" step="5"
+                                   oninput="document.getElementById('leads-minscore-label').textContent=this.value"
+                                   onchange="loadLeads()"
+                                   style="width:100%;margin-top:4px;">
+                        </div>
+                        <button class="btn" onclick="loadLeads()" style="margin-top:auto;">Refresh</button>
+                    </div>
+                </div>
+
+                <div class="card" style="padding:0;overflow:hidden;">
+                    <table id="leads-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Address</th>
+                                <th>Owner</th>
+                                <th>ZIP</th>
+                                <th>Score</th>
+                                <th>Tier</th>
+                                <th>Top Signal</th>
+                                <th>Tenure</th>
+                                <th>Last Contact</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="leads-tbody">
+                            <tr><td colspan="10" style="text-align:center;color:var(--text-dim);padding:32px">Click Refresh to load leads</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;font-size:12px;color:var(--text-dim);">
+                    <span id="leads-count-label"></span>
+                    <div style="display:flex;gap:8px;">
+                        <button class="btn btn-ghost" id="leads-prev-btn" onclick="leadsPage(-1)" style="padding:4px 12px;font-size:12px;">← Prev</button>
+                        <button class="btn btn-ghost" id="leads-next-btn" onclick="leadsPage(1)" style="padding:4px 12px;font-size:12px;">Next →</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── Score Tuning sub-panel ── -->
+            <div id="leads-tab-tuning" style="display:none;">
+                <div class="card">
+                    <div class="card-title"><span class="dot" style="background:var(--purple)"></span> Signal Weights</div>
+                    <div style="font-size:12px;color:var(--text-dim);margin-bottom:16px;">Weights are auto-normalized to sum to 1.0 on save.</div>
+
+                    <div id="weight-sliders">
+                        <div class="toggle-row">
+                            <div><div class="toggle-label">Tenure</div><div class="toggle-desc">Years of ownership — equity proxy</div></div>
+                            <div style="display:flex;align-items:center;gap:10px;">
+                                <span id="wt-tenure-label" style="font-family:var(--font-mono);font-size:12px;color:var(--accent);min-width:36px;text-align:right;">0.25</span>
+                                <input type="range" id="wt-tenure" min="0" max="1" step="0.05" value="0.25"
+                                       oninput="document.getElementById('wt-tenure-label').textContent=parseFloat(this.value).toFixed(2)"
+                                       style="width:120px;">
+                            </div>
+                        </div>
+                        <div class="toggle-row">
+                            <div><div class="toggle-label">Rate Lock-In</div><div class="toggle-desc">Mortgage rate at purchase — golden handcuffs</div></div>
+                            <div style="display:flex;align-items:center;gap:10px;">
+                                <span id="wt-rate-label" style="font-family:var(--font-mono);font-size:12px;color:var(--accent);min-width:36px;text-align:right;">0.20</span>
+                                <input type="range" id="wt-rate" min="0" max="1" step="0.05" value="0.20"
+                                       oninput="document.getElementById('wt-rate-label').textContent=parseFloat(this.value).toFixed(2)"
+                                       style="width:120px;">
+                            </div>
+                        </div>
+                        <div class="toggle-row">
+                            <div><div class="toggle-label">Value Gap</div><div class="toggle-desc">Model estimate vs assessed value</div></div>
+                            <div style="display:flex;align-items:center;gap:10px;">
+                                <span id="wt-gap-label" style="font-family:var(--font-mono);font-size:12px;color:var(--accent);min-width:36px;text-align:right;">0.25</span>
+                                <input type="range" id="wt-gap" min="0" max="1" step="0.05" value="0.25"
+                                       oninput="document.getElementById('wt-gap-label').textContent=parseFloat(this.value).toFixed(2)"
+                                       style="width:120px;">
+                            </div>
+                        </div>
+                        <div class="toggle-row">
+                            <div><div class="toggle-label">Market Temperature</div><div class="toggle-desc">Supply/demand overlay from Redfin data</div></div>
+                            <div style="display:flex;align-items:center;gap:10px;">
+                                <span id="wt-mkt-label" style="font-family:var(--font-mono);font-size:12px;color:var(--accent);min-width:36px;text-align:right;">0.15</span>
+                                <input type="range" id="wt-mkt" min="0" max="1" step="0.05" value="0.15"
+                                       oninput="document.getElementById('wt-mkt-label').textContent=parseFloat(this.value).toFixed(2)"
+                                       style="width:120px;">
+                            </div>
+                        </div>
+                        <div class="toggle-row">
+                            <div><div class="toggle-label">Property Age</div><div class="toggle-desc">System replacement cycle motivation</div></div>
+                            <div style="display:flex;align-items:center;gap:10px;">
+                                <span id="wt-age-label" style="font-family:var(--font-mono);font-size:12px;color:var(--accent);min-width:36px;text-align:right;">0.15</span>
+                                <input type="range" id="wt-age" min="0" max="1" step="0.05" value="0.15"
+                                       oninput="document.getElementById('wt-age-label').textContent=parseFloat(this.value).toFixed(2)"
+                                       style="width:120px;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card" style="margin-top:16px;">
+                    <div class="card-title"><span class="dot" style="background:var(--blue)"></span> Thresholds</div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:12px;">
+                        <div class="form-group">
+                            <label>Tenure Sweet Spot (years)</label>
+                            <input type="number" id="thr-tenure" value="7" min="3" max="20">
+                        </div>
+                        <div class="form-group">
+                            <label>Rate Lock Threshold (%)</label>
+                            <input type="number" id="thr-rate" value="4.5" min="2" max="8" step="0.1">
+                        </div>
+                        <div class="form-group">
+                            <label>Value Gap Significant (%)</label>
+                            <input type="number" id="thr-gap" value="15" min="5" max="50">
+                        </div>
+                        <div class="form-group">
+                            <label>Property Age Cycle (years)</label>
+                            <input type="number" id="thr-age-cycle" value="18" min="10" max="30">
+                        </div>
+                    </div>
+                </div>
+
+                <div style="display:flex;gap:12px;margin-top:16px;align-items:center;">
+                    <button class="btn" onclick="saveAndRescore()">Save & Re-Score</button>
+                    <button class="btn btn-ghost" onclick="saveTuningOnly()">Save Config Only</button>
+                    <span id="rescore-status" style="font-size:12px;color:var(--text-dim)"></span>
+                </div>
+
+                <div id="rescore-output" style="display:none;margin-top:16px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);padding:16px;font-family:var(--font-mono);font-size:11px;color:var(--text-muted);white-space:pre-wrap;max-height:200px;overflow-y:auto;"></div>
+            </div>
+
+            <!-- ── Interaction Logger sub-panel ── -->
+            <div id="leads-tab-logger" style="display:none;">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                    <div class="card">
+                        <div class="card-title"><span class="dot" style="background:var(--green)"></span> Log Contact</div>
+
+                        <div class="form-group" style="margin-top:12px;position:relative;">
+                            <label>Address</label>
+                            <input type="text" id="log-address" placeholder="Start typing to search..."
+                                   oninput="addressAutocomplete(this.value)"
+                                   autocomplete="off">
+                            <div id="log-address-suggestions" style="position:absolute;top:100%;left:0;right:0;background:var(--bg-card);border:1px solid var(--border);border-top:none;border-radius:0 0 var(--radius) var(--radius);z-index:100;display:none;max-height:160px;overflow-y:auto;"></div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Contact Type</label>
+                            <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap;">
+                                <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;padding:6px 12px;border:1px solid var(--border);border-radius:var(--radius);"><input type="radio" name="contact-type" value="door_knock" checked> Door Knock</label>
+                                <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;padding:6px 12px;border:1px solid var(--border);border-radius:var(--radius);"><input type="radio" name="contact-type" value="call"> Call</label>
+                                <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;padding:6px 12px;border:1px solid var(--border);border-radius:var(--radius);"><input type="radio" name="contact-type" value="email"> Email</label>
+                                <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;padding:6px 12px;border:1px solid var(--border);border-radius:var(--radius);"><input type="radio" name="contact-type" value="mailer"> Mailer</label>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Outcome</label>
+                            <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap;">
+                                <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;padding:6px 12px;border:1px solid var(--border);border-radius:var(--radius);"><input type="radio" name="outcome" value="no_answer" checked> No Answer</label>
+                                <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;padding:6px 12px;border:1px solid var(--border);border-radius:var(--radius);"><input type="radio" name="outcome" value="not_interested"> Not Interested</label>
+                                <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;padding:6px 12px;border:1px solid var(--border);border-radius:var(--radius);"><input type="radio" name="outcome" value="interested"> Interested</label>
+                                <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;padding:6px 12px;border:1px solid var(--border);border-radius:var(--radius);"><input type="radio" name="outcome" value="callback"> Callback</label>
+                                <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;padding:6px 12px;border:1px solid var(--border);border-radius:var(--radius);"><input type="radio" name="outcome" value="listing_appt"> Listing Appt</label>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Notes</label>
+                            <textarea id="log-notes" rows="3" style="width:100%;resize:vertical;" placeholder="Optional notes..."></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Date</label>
+                            <input type="date" id="log-date">
+                        </div>
+
+                        <button class="btn" onclick="submitInteraction()" style="width:100%;">Log Interaction</button>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-title"><span class="dot" style="background:var(--text-dim)"></span> Recent Interactions</div>
+                        <div style="display:flex;gap:8px;margin:12px 0 8px;">
+                            <input type="text" id="int-filter-addr" placeholder="Filter by address..."
+                                   oninput="loadInteractions()" style="flex:1;padding:6px 10px;font-size:13px;">
+                        </div>
+                        <div id="interactions-list" style="max-height:420px;overflow-y:auto;">
+                            <div style="color:var(--text-dim);font-size:12px;text-align:center;padding:24px;">Loading...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div><!-- /panel-leads -->
+
     </div>
 </div>
 
@@ -1246,6 +1546,342 @@ async function loadZipDetail(zip) {
     document.getElementById('data-zip-filter').value = zip;
     loadTransactions();
 }
+
+// ======================== LEAD SCORING ========================
+
+let leadsOffset = 0;
+const LEADS_PAGE_SIZE = 50;
+
+function switchLeadsTab(tab) {
+    document.querySelectorAll('.leads-tab').forEach(t => {
+        const isActive = t.dataset.tab === tab;
+        t.style.borderBottomColor = isActive ? 'var(--accent)' : 'transparent';
+        t.style.color = isActive ? 'var(--accent)' : 'var(--text-muted)';
+    });
+    ['overview', 'table', 'tuning', 'logger'].forEach(id => {
+        const el = document.getElementById('leads-tab-' + id);
+        if (el) el.style.display = id === tab ? 'block' : 'none';
+    });
+    if (tab === 'overview') loadLeadStats();
+    if (tab === 'table') loadLeads();
+    if (tab === 'tuning') loadTuningConfig();
+    if (tab === 'logger') {
+        // Set today's date default
+        const d = new Date();
+        const iso = d.toISOString().split('T')[0];
+        document.getElementById('log-date').value = iso;
+        loadInteractions();
+    }
+}
+
+async function loadLeadStats() {
+    try {
+        const data = await (await fetch('/api/lead-scores/stats')).json();
+
+        document.getElementById('ls-total').textContent = (data.total || 0).toLocaleString();
+        document.getElementById('ls-mean').textContent = data.mean_score || '—';
+        document.getElementById('ls-total-label').textContent =
+            data.total ? data.total.toLocaleString() + ' parcels scored' : 'No scores yet — run score_leads.py';
+
+        const tierMap = {};
+        (data.tier_counts || []).forEach(r => { tierMap[r.tier] = r.n; });
+        document.getElementById('ls-tier-a').textContent = (tierMap['A'] || 0).toLocaleString();
+        document.getElementById('ls-tier-b').textContent = (tierMap['B'] || 0).toLocaleString();
+        document.getElementById('ls-tier-c').textContent = (tierMap['C'] || 0).toLocaleString();
+        document.getElementById('ls-tier-d').textContent = (tierMap['D'] || 0).toLocaleString();
+
+        // Histogram
+        const hist = data.histogram || [];
+        const maxN = Math.max(...hist.map(h => h.n), 1);
+        const bucketColors = {
+            0: 'var(--text-dim)', 10: 'var(--text-dim)', 20: 'var(--red)',
+            30: 'var(--accent)', 40: 'var(--accent)', 50: 'var(--blue)',
+            60: 'var(--blue)', 70: 'var(--green)', 80: 'var(--green)', 90: 'var(--green)'
+        };
+        const histEl = document.getElementById('ls-histogram');
+        if (hist.length) {
+            histEl.innerHTML = Array.from({length: 10}, (_, i) => {
+                const bucket = i * 10;
+                const row = hist.find(h => h.bucket === bucket);
+                const n = row ? row.n : 0;
+                const h = Math.round((n / maxN) * 100);
+                const color = bucketColors[bucket] || 'var(--text-muted)';
+                return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;">
+                    <div style="font-size:9px;color:var(--text-dim)">${n > 0 ? n : ''}</div>
+                    <div style="width:100%;height:${h}px;background:${color};border-radius:2px 2px 0 0;min-height:${n>0?2:0}px;" title="${bucket}-${bucket+9}: ${n}"></div>
+                </div>`;
+            }).join('');
+        }
+    } catch(e) {
+        document.getElementById('ls-total-label').textContent = 'Error loading stats';
+    }
+}
+
+async function loadLeads() {
+    leadsOffset = 0;
+    await _fetchLeads();
+}
+
+function leadsPage(dir) {
+    leadsOffset = Math.max(0, leadsOffset + dir * LEADS_PAGE_SIZE);
+    _fetchLeads();
+}
+
+async function _fetchLeads() {
+    const zip = document.getElementById('leads-filter-zip').value;
+    const minScore = document.getElementById('leads-minscore').value;
+    const tierA = document.getElementById('leads-tier-a').checked;
+    const tierB = document.getElementById('leads-tier-b').checked;
+    const tierC = document.getElementById('leads-tier-c').checked;
+    const tierD = document.getElementById('leads-tier-d').checked;
+
+    // We fetch all tiers and filter client-side (simpler than multiple API calls)
+    const tiers = [tierA && 'A', tierB && 'B', tierC && 'C', tierD && 'D'].filter(Boolean);
+
+    const params = new URLSearchParams({
+        min_score: minScore,
+        limit: LEADS_PAGE_SIZE,
+        offset: leadsOffset,
+    });
+    if (zip) params.set('zip', zip);
+
+    try {
+        const data = await (await fetch('/api/lead-scores?' + params)).json();
+        const leads = (data.leads || []).filter(l => !tiers.length || tiers.includes(l.tier));
+
+        const tierColors = { A: 'var(--green)', B: 'var(--blue)', C: 'var(--accent)', D: 'var(--text-muted)' };
+        const tierBg = { A: 'var(--green-dim)', B: 'var(--blue-dim)', C: 'var(--accent-dim)', D: 'rgba(0,0,0,0.2)' };
+
+        document.getElementById('leads-tbody').innerHTML = leads.length ? leads.map((lead, i) => {
+            const sc = lead.score_components || {};
+            const topSignal = Object.entries(sc)
+                .filter(([k]) => k !== 'tier')
+                .sort((a, b) => (b[1].value || 0) - (a[1].value || 0))[0];
+            const topLabel = topSignal ? `${topSignal[0].replace('_', ' ')}: ${topSignal[1].value}` : '—';
+            const topDetail = topSignal ? (topSignal[1].detail || '') : '';
+
+            const tenure = lead.purchase_date
+                ? ((new Date() - new Date(lead.purchase_date)) / (365.25 * 864e5)).toFixed(1) + ' yrs'
+                : '—';
+            const lastContact = lead.last_interaction
+                ? lead.last_interaction.split('T')[0]
+                : '<span style="color:var(--text-dim)">Never</span>';
+            const tier = lead.tier || '?';
+
+            return `<tr>
+                <td style="color:var(--text-dim);font-size:11px">${leadsOffset + i + 1}</td>
+                <td style="font-size:12px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${lead.address}">${lead.address || '—'}</td>
+                <td style="font-size:11px;color:var(--text-muted)">${(lead.owner_name || '—').substring(0, 20)}</td>
+                <td class="mono">${lead.zip || '—'}</td>
+                <td class="mono" style="font-weight:600;color:${tierColors[tier]}">${lead.score ? lead.score.toFixed(1) : '—'}</td>
+                <td><span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;letter-spacing:.04em;background:${tierBg[tier]};color:${tierColors[tier]}">${tier}</span></td>
+                <td style="font-size:11px;color:var(--text-muted)" title="${topDetail}">${topLabel}</td>
+                <td class="mono" style="font-size:11px">${tenure}</td>
+                <td style="font-size:11px">${lastContact}</td>
+                <td>
+                    <div style="display:flex;gap:6px;">
+                        <button class="btn btn-ghost" style="padding:3px 8px;font-size:11px;"
+                            onclick="prefillLogger('${(lead.address||'').replace(/'/g,"\\'")}')">Log</button>
+                    </div>
+                </td>
+            </tr>`;
+        }).join('') : `<tr><td colspan="10" style="text-align:center;color:var(--text-dim);padding:32px">No leads match current filters</td></tr>`;
+
+        const shown = leadsOffset + leads.length;
+        document.getElementById('leads-count-label').textContent =
+            `Showing ${leadsOffset + 1}–${shown} of ${data.total}`;
+        document.getElementById('leads-prev-btn').disabled = leadsOffset === 0;
+        document.getElementById('leads-next-btn').disabled = shown >= data.total;
+    } catch(e) {
+        document.getElementById('leads-tbody').innerHTML =
+            `<tr><td colspan="10" style="text-align:center;color:var(--red);padding:24px">Error loading leads: ${e.message}</td></tr>`;
+    }
+}
+
+async function loadTuningConfig() {
+    try {
+        const cfg = await (await fetch('/api/config')).json();
+        const ls = cfg.lead_scoring || {};
+        const w = ls.weights || {};
+
+        const setSlider = (id, labelId, val) => {
+            const el = document.getElementById(id);
+            const lbl = document.getElementById(labelId);
+            if (el) el.value = val;
+            if (lbl) lbl.textContent = parseFloat(val).toFixed(2);
+        };
+        setSlider('wt-tenure', 'wt-tenure-label', w.tenure || 0.25);
+        setSlider('wt-rate', 'wt-rate-label', w.rate_lock_in || 0.20);
+        setSlider('wt-gap', 'wt-gap-label', w.value_gap || 0.25);
+        setSlider('wt-mkt', 'wt-mkt-label', w.market_temperature || 0.15);
+        setSlider('wt-age', 'wt-age-label', w.property_age || 0.15);
+
+        const setNum = (id, key, def) => {
+            const el = document.getElementById(id);
+            if (el) el.value = ls[key] !== undefined ? ls[key] : def;
+        };
+        setNum('thr-tenure', 'tenure_sweet_spot_years', 7);
+        setNum('thr-rate', 'rate_lock_threshold', 4.5);
+        setNum('thr-gap', 'value_gap_significant_pct', 15);
+        setNum('thr-age-cycle', 'property_age_replacement_cycle', 18);
+    } catch(e) {}
+}
+
+function getLeadScoringPayload() {
+    return {
+        weights: {
+            tenure: parseFloat(document.getElementById('wt-tenure').value),
+            rate_lock_in: parseFloat(document.getElementById('wt-rate').value),
+            value_gap: parseFloat(document.getElementById('wt-gap').value),
+            market_temperature: parseFloat(document.getElementById('wt-mkt').value),
+            property_age: parseFloat(document.getElementById('wt-age').value),
+        },
+        tenure_sweet_spot_years: parseInt(document.getElementById('thr-tenure').value),
+        rate_lock_threshold: parseFloat(document.getElementById('thr-rate').value),
+        value_gap_significant_pct: parseFloat(document.getElementById('thr-gap').value),
+        property_age_replacement_cycle: parseInt(document.getElementById('thr-age-cycle').value),
+    };
+}
+
+async function saveTuningOnly() {
+    const payload = getLeadScoringPayload();
+    await fetch('/api/config/lead-scoring', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+    });
+    toast('Lead scoring config saved');
+}
+
+async function saveAndRescore() {
+    const payload = getLeadScoringPayload();
+    const statusEl = document.getElementById('rescore-status');
+    const outputEl = document.getElementById('rescore-output');
+
+    statusEl.textContent = 'Saving config...';
+    await fetch('/api/config/lead-scoring', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+    });
+
+    statusEl.textContent = 'Re-scoring parcels (this may take a minute)...';
+    outputEl.style.display = 'none';
+
+    try {
+        const resp = await fetch('/api/lead-scores/rescore', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({})
+        });
+        const data = await resp.json();
+
+        if (data.stdout) {
+            outputEl.textContent = data.stdout;
+            outputEl.style.display = 'block';
+        }
+        if (data.status === 'ok') {
+            statusEl.textContent = 'Done ✓';
+            toast('Re-scoring complete — refresh leads table to see updates');
+        } else {
+            statusEl.textContent = 'Error — see output below';
+            if (data.stderr) outputEl.textContent += '\n\nSTDERR:\n' + data.stderr;
+            outputEl.style.display = 'block';
+        }
+    } catch(e) {
+        statusEl.textContent = 'Request failed: ' + e.message;
+    }
+}
+
+async function addressAutocomplete(q) {
+    const sugEl = document.getElementById('log-address-suggestions');
+    if (q.length < 3) { sugEl.style.display = 'none'; return; }
+    try {
+        const addrs = await (await fetch('/api/lead-scores/addresses?q=' + encodeURIComponent(q))).json();
+        if (!addrs.length) { sugEl.style.display = 'none'; return; }
+        sugEl.innerHTML = addrs.map(a =>
+            `<div onclick="selectAddress('${a.replace(/'/g,"\\'")}');event.stopPropagation()"
+                  style="padding:8px 12px;font-size:13px;cursor:pointer;border-bottom:1px solid var(--border);color:var(--text)"
+                  onmouseover="this.style.background='var(--bg-card-hover)'"
+                  onmouseout="this.style.background=''">${a}</div>`
+        ).join('');
+        sugEl.style.display = 'block';
+    } catch(e) { sugEl.style.display = 'none'; }
+}
+
+function selectAddress(addr) {
+    document.getElementById('log-address').value = addr;
+    document.getElementById('log-address-suggestions').style.display = 'none';
+}
+
+function prefillLogger(address) {
+    switchLeadsTab('logger');
+    document.getElementById('log-address').value = address;
+    document.getElementById('log-date').value = new Date().toISOString().split('T')[0];
+    loadInteractions();
+}
+
+async function submitInteraction() {
+    const address = document.getElementById('log-address').value.trim();
+    if (!address) { toast('Address is required'); return; }
+
+    const contactType = document.querySelector('input[name="contact-type"]:checked')?.value;
+    const outcome = document.querySelector('input[name="outcome"]:checked')?.value;
+    const notes = document.getElementById('log-notes').value.trim();
+    const dateVal = document.getElementById('log-date').value;
+    const contacted_at = dateVal ? dateVal + 'T12:00:00' : new Date().toISOString();
+
+    const resp = await fetch('/api/interactions', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ address, contact_type: contactType, outcome, notes, contacted_at })
+    });
+    const data = await resp.json();
+
+    if (data.status === 'ok') {
+        toast('Interaction logged' + (outcome === 'callback' ? ' — follow-up in 3 days' : outcome === 'no_answer' ? ' — retry in 14 days' : ''));
+        document.getElementById('log-notes').value = '';
+        loadInteractions();
+    } else {
+        toast('Error: ' + (data.error || 'Unknown error'));
+    }
+}
+
+async function loadInteractions() {
+    const filterAddr = document.getElementById('int-filter-addr')?.value || '';
+    const url = '/api/interactions?limit=20' + (filterAddr ? '&address=' + encodeURIComponent(filterAddr) : '');
+    try {
+        const rows = await (await fetch(url)).json();
+        const outcomeColors = {
+            no_answer: 'var(--text-dim)', not_interested: 'var(--red)',
+            interested: 'var(--green)', callback: 'var(--accent)', listing_appt: 'var(--purple)'
+        };
+        const outcomeLabels = {
+            no_answer: 'No Answer', not_interested: 'Not Interested',
+            interested: 'Interested', callback: 'Callback', listing_appt: 'Listing Appt'
+        };
+        const listEl = document.getElementById('interactions-list');
+        listEl.innerHTML = rows.length ? rows.map(r => `
+            <div style="padding:12px 0;border-bottom:1px solid var(--border);">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                    <div style="font-size:12px;font-weight:500;color:var(--text);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.address || '—'}</div>
+                    <span style="font-size:11px;font-weight:600;color:${outcomeColors[r.outcome]||'var(--text-muted)'};">${outcomeLabels[r.outcome]||r.outcome||'—'}</span>
+                </div>
+                <div style="margin-top:4px;font-size:11px;color:var(--text-dim);">
+                    ${r.contact_type?.replace('_',' ') || ''} · ${(r.contacted_at||'').split('T')[0]}
+                    ${r.notes ? `<span style="color:var(--text-muted);margin-left:6px;">${r.notes}</span>` : ''}
+                </div>
+            </div>
+        `).join('') : '<div style="color:var(--text-dim);font-size:12px;text-align:center;padding:24px;">No interactions logged yet</div>';
+    } catch(e) {}
+}
+
+// Hide suggestions on outside click
+document.addEventListener('click', () => {
+    const el = document.getElementById('log-address-suggestions');
+    if (el) el.style.display = 'none';
+});
+
+// Auto-load lead stats when panel activates
+document.querySelector('[data-panel="leads"]').addEventListener('click', () => {
+    setTimeout(loadLeadStats, 50);
+});
 </script>
 </body>
 </html>

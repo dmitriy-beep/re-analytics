@@ -5,6 +5,7 @@ Run: python app.py
 Open: http://localhost:5050
 """
 
+import sys
 import json
 import os
 import sqlite3
@@ -75,6 +76,26 @@ DEFAULT_CONFIG = {
         "min_zip_samples": 30,
         "test_split": 0.2,
         "prediction_interval_pct": 90
+    },
+    "lead_scoring": {
+        "weights": {
+            "tenure": 0.25,
+            "rate_lock_in": 0.20,
+            "value_gap": 0.25,
+            "market_temperature": 0.15,
+            "property_age": 0.15
+        },
+        "tiers": {
+            "A": {"min_score": 75, "label": "High Propensity"},
+            "B": {"min_score": 50, "label": "Medium Propensity"},
+            "C": {"min_score": 25, "label": "Low Propensity"},
+            "D": {"min_score": 0, "label": "Not a Lead"}
+        },
+        "zip_filter": ["95765", "95677", "95678", "95661", "95746", "95650"],
+        "tenure_sweet_spot_years": 7,
+        "rate_lock_threshold": 4.5,
+        "value_gap_significant_pct": 15,
+        "property_age_replacement_cycle": 18
     }
 }
 
@@ -446,6 +467,190 @@ def api_onepager_preview():
                            city=city,
                            zip_stats=zip_stats)
     return html
+
+
+# ---------------------------------------------------------------------------
+# Lead Scoring Routes
+# ---------------------------------------------------------------------------
+from datetime import datetime as _dt, timedelta as _td
+
+
+@app.route("/api/lead-scores", methods=["GET"])
+def api_lead_scores():
+    zip_code = request.args.get("zip")
+    tier = request.args.get("tier")
+    min_score = request.args.get("min_score", 0, type=float)
+    limit = request.args.get("limit", 50, type=int)
+    offset = request.args.get("offset", 0, type=int)
+
+    conditions = ["ls.score >= ?"]
+    params = [min_score]
+
+    if zip_code:
+        conditions.append("p.zip = ?")
+        params.append(zip_code)
+
+    if tier:
+        conditions.append("json_extract(ls.score_components, '$.tier') = ?")
+        params.append(tier.upper())
+
+    where_clause = " AND ".join(conditions)
+
+    sql = f"""
+        SELECT
+            ls.parcel_id, ls.address, ls.score, ls.score_components, ls.last_scored,
+            p.zip, p.owner_name, p.purchase_date, p.assessed_value,
+            p.year_built, p.sqft, p.beds, p.baths,
+            json_extract(ls.score_components, '$.tier') as tier,
+            (SELECT MAX(contacted_at) FROM interactions i WHERE i.address = ls.address) as last_interaction
+        FROM lead_scores ls
+        LEFT JOIN parcels p ON ls.parcel_id = p.parcel_id OR ls.address = p.address
+        WHERE {where_clause}
+        ORDER BY ls.score DESC
+        LIMIT ? OFFSET ?
+    """
+    rows = query_db(sql, params + [limit, offset])
+
+    for row in rows:
+        if row.get("score_components"):
+            try:
+                row["score_components"] = json.loads(row["score_components"])
+            except Exception:
+                pass
+
+    count_row = query_db(
+        f"SELECT COUNT(*) as n FROM lead_scores ls LEFT JOIN parcels p ON ls.parcel_id = p.parcel_id OR ls.address = p.address WHERE {where_clause}",
+        params, one=True
+    )
+    total = count_row["n"] if count_row else 0
+
+    return jsonify({"leads": rows, "total": total, "limit": limit, "offset": offset})
+
+
+@app.route("/api/lead-scores/stats", methods=["GET"])
+def api_lead_score_stats():
+    tier_counts = query_db("""
+        SELECT json_extract(score_components, '$.tier') as tier,
+               COUNT(*) as n,
+               ROUND(AVG(score), 1) as avg_score
+        FROM lead_scores GROUP BY tier ORDER BY avg_score DESC
+    """)
+    total = sum(r["n"] for r in tier_counts)
+    histogram = query_db("""
+        SELECT CAST(score / 10 AS INTEGER) * 10 as bucket, COUNT(*) as n
+        FROM lead_scores GROUP BY bucket ORDER BY bucket
+    """)
+    mean_row = query_db("SELECT ROUND(AVG(score), 1) as m FROM lead_scores", one=True)
+    return jsonify({
+        "tier_counts": tier_counts,
+        "total": total,
+        "mean_score": mean_row["m"] if mean_row else 0,
+        "histogram": histogram,
+    })
+
+
+@app.route("/api/lead-scores/rescore", methods=["POST"])
+def api_rescore_leads():
+    data = request.json or {}
+    zip_code = data.get("zip")
+
+    script = PROJECT_ROOT / "src" / "score_leads.py"
+    if not script.exists():
+        script = PROJECT_ROOT / "score_leads.py"
+
+    cmd = [sys.executable, str(script)]
+    if zip_code:
+        cmd += ["--zip", zip_code]
+
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+        return jsonify({
+            "status": "ok" if result.returncode == 0 else "error",
+            "stdout": result.stdout[-3000:],
+            "stderr": result.stderr[-1000:] if result.stderr else "",
+        })
+    except subprocess.TimeoutExpired:
+        return jsonify({"status": "error", "message": "Timed out after 5 minutes"}), 408
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route("/api/interactions", methods=["POST"])
+def api_log_interaction():
+    data = request.json
+    if not data or not data.get("address"):
+        return jsonify({"error": "address is required"}), 400
+
+    contacted_at = data.get("contacted_at") or _dt.utcnow().isoformat()
+    conn = get_db()
+    conn.execute("""
+        INSERT INTO interactions (parcel_id, address, contact_type, outcome, notes, contacted_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+    """, (data.get("parcel_id"), data["address"], data.get("contact_type"),
+          data.get("outcome"), data.get("notes"), contacted_at))
+
+    outcome = data.get("outcome", "")
+    if outcome in ("callback", "no_answer"):
+        days = 3 if outcome == "callback" else 14
+        follow_up_date = (_dt.utcnow() + _td(days=days)).strftime("%Y-%m-%d")
+        conn.execute("""
+            INSERT INTO follow_ups (parcel_id, address, trigger_reason, follow_up_date, notes)
+            VALUES (?, ?, ?, ?, ?)
+        """, (data.get("parcel_id"), data["address"],
+              "callback_scheduled" if outcome == "callback" else "no_answer_retry",
+              follow_up_date, f"Auto-created from {outcome} interaction"))
+
+    conn.commit()
+    conn.close()
+    return jsonify({"status": "ok"})
+
+
+@app.route("/api/interactions", methods=["GET"])
+def api_get_interactions():
+    address = request.args.get("address")
+    limit = request.args.get("limit", 20, type=int)
+    if address:
+        rows = query_db("SELECT * FROM interactions WHERE address LIKE ? ORDER BY contacted_at DESC LIMIT ?",
+                        (f"%{address}%", limit))
+    else:
+        rows = query_db("SELECT * FROM interactions ORDER BY contacted_at DESC LIMIT ?", (limit,))
+    return jsonify(rows)
+
+
+@app.route("/api/config/lead-scoring", methods=["POST"])
+def api_save_lead_scoring_config():
+    data = request.json
+    cfg = load_config()
+    ls = cfg.get("lead_scoring", {})
+
+    if "weights" in data:
+        w = data["weights"]
+        total_w = sum(w.values())
+        if total_w > 0:
+            data["weights"] = {k: round(v / total_w, 4) for k, v in w.items()}
+        ls["weights"] = data["weights"]
+
+    for key in ("tiers", "zip_filter"):
+        if key in data:
+            ls[key] = data[key]
+    for key in ("tenure_sweet_spot_years", "rate_lock_threshold",
+                "value_gap_significant_pct", "property_age_replacement_cycle"):
+        if key in data:
+            ls[key] = data[key]
+
+    cfg["lead_scoring"] = ls
+    save_config(cfg)
+    return jsonify({"status": "ok", "lead_scoring": ls})
+
+
+@app.route("/api/lead-scores/addresses", methods=["GET"])
+def api_lead_addresses():
+    q = request.args.get("q", "")
+    rows = query_db("""
+        SELECT DISTINCT address FROM lead_scores
+        WHERE address LIKE ? ORDER BY score DESC LIMIT 20
+    """, (f"%{q}%",))
+    return jsonify([r["address"] for r in rows])
 
 
 # ---------------------------------------------------------------------------
